@@ -1,44 +1,36 @@
+"""
+Example app using the shared ledger system.
+"""
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 
 from .api.router import router
-from .api.dependencies import engine
-from core.shared_ledger.models.base import Base
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """
-    Lifespan context manager for FastAPI application.
-    Handles database initialization and cleanup.
-    """
-    # Create database tables on startup
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    
-    yield
-    
-    # Clean up resources on shutdown
-    await engine.dispose()
+from .api.dependencies import get_db
+from core.shared_ledger.api.router import router as ledger_router
+from core.shared_ledger.api.router import get_db as core_get_db
 
 app = FastAPI(
-    title="Shared Ledger Example App",
+    title="Example Ledger App",
     description="Example application using the shared ledger system",
-    version="1.0.0",
-    lifespan=lifespan
+    version="0.1.0"
 )
 
-# Configure CORS
+# Override core dependencies
+app.dependency_overrides[core_get_db] = get_db
+
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include the ledger router
+# Include routers
 app.include_router(router)
+app.include_router(ledger_router)
 
 # Health check endpoint
 @app.get("/health")

@@ -1,25 +1,29 @@
+"""
+Example app-specific ledger operations.
+"""
+
 from enum import Enum
-from typing import Dict, Literal, Union
+from typing import Dict, Literal
 
 from core.shared_ledger.operations.base import (
     BaseLedgerOperations,
-    LedgerOperationType,
-    BaseLedgerOperationLiteral
+    BaseLedgerOperationLiteral,
+    LedgerOperationType
 )
 
-# Define literal types for app-specific operations
-AppSpecificOperationLiteral = Literal[
+# Combine base and app-specific operations
+ExampleAppOperationLiteral = Literal[
+    BaseLedgerOperationLiteral,
     "CONTENT_CREATION",
-    "CONTENT_ACCESS",
-    "PREMIUM_CONTENT_CREATION"
+    "CONTENT_ACCESS"
 ]
 
-# Combined type for all operations
-ExampleAppOperationLiteral = Union[BaseLedgerOperationLiteral, AppSpecificOperationLiteral]
-
 class ExampleAppOperationType(str, Enum):
-    """Example application-specific operation types."""
-    # Required base operations
+    """
+    Example app-specific operation types.
+    Extends core operations with content-related operations.
+    """
+    # Include base operations
     DAILY_REWARD = LedgerOperationType.DAILY_REWARD.value
     SIGNUP_CREDIT = LedgerOperationType.SIGNUP_CREDIT.value
     CREDIT_SPEND = LedgerOperationType.CREDIT_SPEND.value
@@ -28,20 +32,29 @@ class ExampleAppOperationType(str, Enum):
     # App-specific operations
     CONTENT_CREATION = "CONTENT_CREATION"
     CONTENT_ACCESS = "CONTENT_ACCESS"
-    PREMIUM_CONTENT_CREATION = "PREMIUM_CONTENT_CREATION"
+
 
 class ExampleAppOperations(BaseLedgerOperations):
-    """Example application operations configuration."""
+    """
+    Example app operation configuration.
+    Extends base operations with content-specific operations and their credit values.
+    """
     
-    # App-specific operation configuration with specific values
-    APP_CONFIG: Dict[AppSpecificOperationLiteral, int] = {
+    # App-specific operation configuration
+    APP_CONFIG: Dict[ExampleAppOperationLiteral, int] = {
+        # Content operations with their credit costs
         ExampleAppOperationType.CONTENT_CREATION.value: -5,
         ExampleAppOperationType.CONTENT_ACCESS.value: 0,
-        ExampleAppOperationType.PREMIUM_CONTENT_CREATION.value: -10,
     }
     
     @classmethod
     def get_operation_config(cls) -> Dict[str, int]:
-        """Get the complete operation configuration including app-specific operations."""
+        """
+        Get the complete operation configuration including base and app-specific operations.
+        
+        Returns:
+            Dict mapping operation names to their credit values
+        """
         config = super().get_operation_config()
-        return {**config, **cls.APP_CONFIG} 
+        config.update(cls.APP_CONFIG)
+        return config 
