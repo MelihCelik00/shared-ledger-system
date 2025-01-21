@@ -4,6 +4,8 @@ A scalable and reusable shared ledger system designed for tracking user credits 
 
 ## Table of Contents
 - [Features](#features)
+- [Architecture Documentation](ARCHITECTURE.md)
+- [System Architecture](#system-architecture)
 - [Technical Stack](#technical-stack)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
@@ -35,6 +37,122 @@ A scalable and reusable shared ledger system designed for tracking user credits 
 - Database migration support using Alembic
 - Docker for development environment
 - Unit tests with pytest
+
+For a detailed view of the system architecture, including class diagrams, sequence diagrams, and component diagrams, please see our [Architecture Documentation](ARCHITECTURE.md).
+
+## System Architecture
+
+### Core Models
+```mermaid
+classDiagram
+    class LedgerEntry {
+        +int id
+        +str operation
+        +str owner_id
+        +int amount
+        +str nonce
+        +datetime created_at
+        +datetime updated_at
+    }
+    
+    class LedgerOperationType {
+        +DAILY_REWARD
+        +SIGNUP_CREDIT
+        +CREDIT_SPEND
+        +CREDIT_ADD
+    }
+    
+    class BaseLedgerOperations {
+        +Dict BASE_CONFIG
+        +get_operation_config()
+        +validate_operations()
+    }
+    
+    class ExampleAppOperations {
+        +Dict APP_CONFIG
+        +get_operation_config()
+    }
+    
+    BaseLedgerOperations <|-- ExampleAppOperations
+    LedgerEntry --> LedgerOperationType : uses
+```
+
+### Operation Flow
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+      'primaryColor': '#BB2528',
+      'primaryTextColor': '#fff',
+      'primaryBorderColor': '#7C0000',
+      'lineColor': '#F8B229',
+      'secondaryColor': '#006100',
+      'tertiaryColor': '#fff'
+    }}}%%
+sequenceDiagram
+    participant Client
+    participant FastAPI
+    participant LedgerRouter
+    participant OperationProcessor
+    participant Database
+
+    Client->>FastAPI: POST /ledger/entry
+    FastAPI->>LedgerRouter: process_request()
+    LedgerRouter->>OperationProcessor: validate_operation()
+    OperationProcessor->>Database: check_duplicate_nonce()
+    Database-->>OperationProcessor: result
+    OperationProcessor->>Database: get_current_balance()
+    Database-->>OperationProcessor: balance
+    OperationProcessor->>Database: save_entry()
+    Database-->>OperationProcessor: success
+    OperationProcessor-->>LedgerRouter: operation_result
+    LedgerRouter-->>FastAPI: response
+    FastAPI-->>Client: 200 OK
+```
+
+### System Components
+```mermaid
+graph TB
+    subgraph "Example App"
+        A[FastAPI App]
+        B[App Router]
+        C[App Operations]
+    end
+    
+    subgraph "Core Ledger System"
+        D[Ledger Router]
+        E[Operation Processor]
+        F[Models & Schemas]
+    end
+    
+    subgraph "Database"
+        G[PostgreSQL]
+        H[Alembic Migrations]
+    end
+    
+    A --> B
+    B --> C
+    B --> D
+    D --> E
+    E --> F
+    F --> G
+    H --> G
+```
+
+### Transaction States
+```mermaid
+stateDiagram-v2
+    [*] --> Received
+    Received --> Validating: Check Operation
+    Validating --> CheckingNonce: Valid Operation
+    Validating --> Failed: Invalid Operation
+    CheckingNonce --> CheckingBalance: Unique Nonce
+    CheckingNonce --> Failed: Duplicate Nonce
+    CheckingBalance --> Processing: Sufficient Balance
+    CheckingBalance --> Failed: Insufficient Balance
+    Processing --> Completed: Save Entry
+    Processing --> Failed: Database Error
+    Completed --> [*]
+    Failed --> [*]
+```
 
 ## Technical Stack
 
